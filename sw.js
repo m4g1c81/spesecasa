@@ -1,5 +1,5 @@
 // Cambia il numero di versione ad ogni aggiornamento dell'app per forzare il refresh della cache
-const CACHE = 'spesecasa-v7';
+const CACHE = 'spesecasa-v8';
 const ASSETS = ['./', 'index.html', 'manifest.json', 'lib/chart.umd.js', 'lib/xlsx.full.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 

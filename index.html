@@ -211,9 +211,8 @@ textarea{resize:none;height:76px}
 @media(min-width:481px){.scroll{scrollbar-width:thin;scrollbar-color:var(--border) transparent}.scroll::-webkit-scrollbar{display:block;width:4px}.scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}}
 .header-right{display:flex;align-items:center;gap:8px}
 .hdr-gear{flex:none;width:40px;height:40px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow);padding:0;gap:0;color:var(--muted)}
-.hdr-gear svg{width:20px;height:20px}
+.hdr-gear svg{width:22px;height:22px;stroke-width:2}
 .hdr-gear.active{background:var(--accent);color:#fff}
-.hdr-gear.active svg circle{fill:var(--accent)}
 .bottom-nav{justify-content:space-around;padding-left:6px;padding-right:6px}
 .nav-fab{flex:none;margin:0 4px}
 </style>
@@ -226,7 +225,7 @@ textarea{resize:none;height:76px}
       <div class="header-right">
         <div class="header-badge" id="hdr-badge" onclick="openPeriodPicker()" title="Cambia periodo">—</div>
         <button class="nav-item hdr-gear" id="nav-impostazioni" onclick="goTo('impostazioni')" aria-label="Impostazioni">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.4" fill="var(--surface)"/><circle cx="15" cy="17" r="2.4" fill="var(--surface)"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
       </div>
     </div>
@@ -417,13 +416,7 @@ textarea{resize:none;height:76px}
       </div>
 
       <!-- INFO APP -->
-      <div class="card">
-        <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Info e versioni</div>
-        <div style="font-size:15px;font-weight:800">SpeseCasa <span id="app-ver" style="color:var(--accent)"></span></div>
-        <div style="font-size:13px;color:var(--muted);margin:4px 0 14px;line-height:1.5">© <span id="app-year"></span> <span id="app-owner"></span>. Tutti i diritti riservati.<br>Ideata e di proprietà di <span id="app-owner2"></span>. Vietata la copia, la modifica e la ridistribuzione senza autorizzazione.</div>
-        <div class="form-label">Cronologia versioni</div>
-        <div id="changelog"></div>
-      </div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);padding:6px 0 10px;line-height:1.6">SpeseCasa <span id="app-ver" style="font-weight:800"></span><br>© <span id="app-year"></span> <span id="app-owner"></span>. Tutti i diritti riservati.</div>
     </div>
 
   </div><!-- /scroll -->
@@ -1529,23 +1522,11 @@ renderHome();
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 
-// ─── INFO APP / VERSIONI ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='2.2.0';
-const CHANGELOG=[
-  {v:'2.2.0',d:'31/10/2026',t:['Importazione dei dati da file Excel','Correzione dell’esportazione del report Excel','Aggiunte informazioni sul copyright e cronologia versioni']},
-  {v:'2.1.0',d:'31/10/2026',t:['Barra inferiore centrata: impostazioni spostate in alto a destra']},
-  {v:'2.0.0',d:'31/10/2026',t:['Nuova grafica chiara e colorata','Scelta Entrata/Uscita a tutto schermo','Nuova schermata di inserimento con nome, importo e icone delle categorie','Versione web app installabile da Safari (GitHub Pages)']},
-  {v:'1.4.0',d:'27/10/2026',t:['Rimosse le funzioni di spese condivise: app per uso personale','Backup tramite foglio di condivisione di iOS']},
-  {v:'1.3.0',d:'26/10/2026',t:['Periodo di riferimento personalizzabile (es. giorno dello stipendio)','Selezione dei periodi passati dalla Home','Date in formato giorno/mese','Invio del report Excel via mail']},
-  {v:'1.2.0',d:'25/10/2026',t:['Categorie personalizzabili e categoria Animali','Modifica di uscite ed entrate già inserite','Backup e ripristino dei dati in JSON']},
-  {v:'1.1.0',d:'24/10/2026',t:['Gestione delle entrate e residuo del periodo']},
-  {v:'1.0.0',d:'24/10/2026',t:['Prima versione: uscite, categorie, budget, report e confronti']}
-];
+// ─── INFO APP ───
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='2.2.1';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);set('app-owner2',APP_OWNER);
-  const cl=document.getElementById('changelog');
-  if(cl)cl.innerHTML=CHANGELOG.map(c=>`<div style="padding:10px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px"><span>v${c.v}</span><span style="color:var(--muted);font-size:12px">${c.d}</span></div><ul style="margin:4px 0 0 18px;font-size:13px;color:var(--muted);line-height:1.5">${c.t.map(x=>`<li>${x}</li>`).join('')}</ul></div>`).join('');
+  set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);
 })();
 </script>
 </body>

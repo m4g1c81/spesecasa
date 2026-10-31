@@ -206,6 +206,13 @@ textarea{resize:none;height:76px}
 .period-item.active-period .period-item-sub{color:rgba(255,255,255,.8)}
 .period-item-sub{font-size:12px;color:var(--muted);margin-top:2px}
 @media(min-width:481px){.scroll{scrollbar-width:thin;scrollbar-color:var(--border) transparent}.scroll::-webkit-scrollbar{display:block;width:4px}.scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}}
+.header-right{display:flex;align-items:center;gap:8px}
+.hdr-gear{flex:none;width:40px;height:40px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow);padding:0;gap:0;color:var(--muted)}
+.hdr-gear svg{width:20px;height:20px}
+.hdr-gear.active{background:var(--accent);color:#fff}
+.hdr-gear.active svg circle{fill:var(--accent)}
+.bottom-nav{justify-content:space-around;padding-left:6px;padding-right:6px}
+.nav-fab{flex:none;margin:0 4px}
 </style>
 </head>
 <body>
@@ -213,7 +220,12 @@ textarea{resize:none;height:76px}
   <div class="header">
     <div class="header-top">
       <div class="app-name">Spese<span>Casa</span></div>
-      <div class="header-badge" id="hdr-badge" onclick="openPeriodPicker()" title="Cambia periodo">—</div>
+      <div class="header-right">
+        <div class="header-badge" id="hdr-badge" onclick="openPeriodPicker()" title="Cambia periodo">—</div>
+        <button class="nav-item hdr-gear" id="nav-impostazioni" onclick="goTo('impostazioni')" aria-label="Impostazioni">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.4" fill="var(--surface)"/><circle cx="15" cy="17" r="2.4" fill="var(--surface)"/></svg>
+        </button>
+      </div>
     </div>
   </div>
   <div class="scroll" id="main-scroll">
@@ -419,10 +431,6 @@ textarea{resize:none;height:76px}
     <button class="nav-item" id="nav-report" onclick="goTo('report')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       <span>Report</span>
-    </button>
-    <button class="nav-item" id="nav-impostazioni" onclick="goTo('impostazioni')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      <span>Altro</span>
     </button>
   </nav>
 </div>

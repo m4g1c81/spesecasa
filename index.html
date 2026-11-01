@@ -292,6 +292,7 @@ textarea{resize:none;height:76px}
 </head>
 <body>
 <div id="splash"><img src="icons/logo-cutout.png" alt=""><b>SpeseCasa</b><span>Il tuo budget, sotto controllo</span></div>
+<script>(function(){try{if(navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)){var e=document.getElementById('splash');if(e)e.parentNode.removeChild(e);}}catch(x){}})();</script>
 <div class="app">
   <div class="header">
     <div class="header-top">
@@ -1629,7 +1630,7 @@ function liveAccent(c){SCT.setAccent(c);}
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SCT.mode()==='auto'){SCT.apply();goTo(currentSection);}});
 
 // ─── INFO APP ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='2.6.0';
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='2.6.1';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);

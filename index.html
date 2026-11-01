@@ -641,37 +641,30 @@ let activeCat='all';
 let currentSection='home';
 let donutInst=null,repInst=null,trendInst=null,cmpInst=null;
 
-// sample data
-if(!expenses.length){
-  expenses=[
-    {id:1,desc:'Supermercato Esselunga',amount:87.50,cat:'Alimentari',date:'2025-05-12',pay:'Carta',tag:'',rec:'no',note:''},
-    {id:2,desc:'Bolletta luce',amount:145,cat:'Bollette',date:'2025-05-10',pay:'Bonifico',tag:'',rec:'mensile',note:''},
-    {id:3,desc:'Benzina',amount:60,cat:'Trasporti',date:'2025-05-09',pay:'Carta',tag:'',rec:'no',note:''},
-    {id:4,desc:'Netflix',amount:13.99,cat:'Intrattenimento',date:'2025-05-05',pay:'Carta',tag:'',rec:'mensile',note:''},
-    {id:5,desc:'Farmacia',amount:34.80,cat:'Salute',date:'2025-05-06',pay:'Contanti',tag:'',rec:'no',note:''},
-    {id:6,desc:'Cena fuori',amount:52,cat:'Ristoranti',date:'2025-05-03',pay:'App',tag:'',rec:'no',note:''},
-    {id:7,desc:'Veterinario',amount:65,cat:'Animali',date:'2025-05-08',pay:'Carta',tag:'',rec:'no',note:''},
-    {id:8,desc:'Supermercato Conad',amount:63.20,cat:'Alimentari',date:'2025-04-28',pay:'Carta',tag:'',rec:'no',note:''},
-    {id:9,desc:'Affitto',amount:750,cat:'Casa',date:'2025-04-05',pay:'Bonifico',tag:'',rec:'mensile',note:''},
-    {id:10,desc:'Palestra',amount:35,cat:'Sport',date:'2025-04-01',pay:'App',tag:'',rec:'mensile',note:''},
-    {id:11,desc:'Benzina',amount:55,cat:'Trasporti',date:'2025-03-14',pay:'Carta',tag:'',rec:'no',note:''},
-    {id:12,desc:'Affitto',amount:750,cat:'Casa',date:'2025-03-05',pay:'Bonifico',tag:'',rec:'mensile',note:''},
-  ];
-  saveExp();
-}
-if(!incomes.length){
-  incomes=[
-    {id:101,desc:'Stipendio maggio',amount:1800,type:'Stipendio',date:'2025-05-27',rec:'mensile',note:''},
-    {id:102,desc:'Freelance',amount:350,type:'Freelance',date:'2025-05-15',rec:'no',note:''},
-    {id:103,desc:'Stipendio aprile',amount:1800,type:'Stipendio',date:'2025-04-27',rec:'mensile',note:''},
-    {id:104,desc:'Stipendio marzo',amount:1800,type:'Stipendio',date:'2025-03-27',rec:'mensile',note:''},
-  ];
-  saveInc();
-}
-if(!Object.keys(budgets).length){
-  cats.forEach(c=>{budgets[c.name]=c.name==='Casa'?800:c.name==='Alimentari'?250:c.name==='Bollette'?200:100;});
-  saveBud();
-}
+// rimuove i vecchi dati di esempio (una sola volta): hanno id fissi e date 2025
+(function(){
+  try{
+    if(localStorage.getItem('sc_demo_clean'))return;
+    const demoE={1:'Supermercato Esselunga',2:'Bolletta luce',3:'Benzina',4:'Netflix',5:'Farmacia',6:'Cena fuori',7:'Veterinario',8:'Supermercato Conad',9:'Affitto',10:'Palestra',11:'Benzina',12:'Affitto'};
+    const demoI={101:'Stipendio maggio',102:'Freelance',103:'Stipendio aprile',104:'Stipendio marzo'};
+    expenses=expenses.filter(e=>!(demoE[e.id]===e.desc&&String(e.date).startsWith('2025-')));
+    incomes=incomes.filter(i=>!(demoI[i.id]===i.desc&&String(i.date).startsWith('2025-')));
+    localStorage.setItem('sc_exp',JSON.stringify(expenses));
+    localStorage.setItem('sc_inc',JSON.stringify(incomes));
+    localStorage.setItem('sc_demo_clean','1');
+  }catch(e){}
+})();
+
+// azzera i budget di esempio (solo se mai modificati rispetto ai valori iniziali)
+(function(){
+  try{
+    if(localStorage.getItem('sc_demo_clean2'))return;
+    const keys=Object.keys(budgets);
+    const isDemo=keys.length>0&&keys.every(k=>budgets[k]===(k==='Casa'?800:k==='Alimentari'?250:k==='Bollette'?200:100));
+    if(isDemo){budgets={};localStorage.setItem('sc_bud','{}');}
+    localStorage.setItem('sc_demo_clean2','1');
+  }catch(e){}
+})();
 
 // ─── STORAGE ───
 function saveExp(){localStorage.setItem('sc_exp',JSON.stringify(expenses));}
@@ -759,12 +752,8 @@ function currPkeyLabel(){
 // Tutti i periodi distinti presenti nei dati
 function getPeriods(){
   const all=[...expenses,...incomes];
-  if(periodDay===1){
-    const s=new Set(all.map(e=>mk(e.date)));
-    return[...s].sort().reverse();
-  }
-  // Mappa ogni data al suo pkey
   const s=new Set(all.map(e=>dateToPkey(e.date)));
+  s.add(currPkey());
   return[...s].sort().reverse();
 }
 
@@ -1630,7 +1619,7 @@ function liveAccent(c){SCT.setAccent(c);}
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SCT.mode()==='auto'){SCT.apply();goTo(currentSection);}});
 
 // ─── INFO APP ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='2.6.1';
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='2.6.3';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);

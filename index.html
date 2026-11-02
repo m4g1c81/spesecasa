@@ -334,6 +334,15 @@ textarea{resize:none;height:76px}
 .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
 .donut-center b{font-family:'Fredoka',ui-rounded,sans-serif;font-size:28px;font-weight:600}
 .donut-center span{font-size:12px;color:var(--muted);font-weight:800}
+.dn-tabs{display:flex;gap:6px;background:var(--surface2);padding:4px;border-radius:14px;margin-bottom:6px}
+.dn-tabs button{flex:1;border:0;background:none;padding:7px 0;border-radius:11px;font:800 13px inherit;font-family:inherit;color:var(--muted);cursor:pointer;transition:.2s}
+.dn-tabs button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.dn-dots{display:flex;justify-content:center;gap:6px;margin-top:14px}
+.dn-dots i{width:6px;height:6px;border-radius:3px;background:var(--muted2);transition:.25s}
+.dn-dots i.on{width:18px;background:var(--text)}
+#donut-swipe.sl-l{animation:slL .28s ease}#donut-swipe.sl-r{animation:slR .28s ease}
+@keyframes slL{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+@keyframes slR{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
 .leg-list{display:flex;flex-direction:column;gap:11px;margin-top:18px}
 .leg-row{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700}
 .leg-row .ln{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -400,9 +409,13 @@ textarea{resize:none;height:76px}
         <div class="exp-list" id="home-list"></div>
       </div>
       <div class="card">
-        <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>Uscite per categoria</div>
+        <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg><span id="donut-title">Uscite per categoria</span></div>
+        <div class="dn-tabs"><button class="on" onclick="donutMode(0)">Uscite</button><button onclick="donutMode(1)">Entrate</button><button onclick="donutMode(2)">Budget</button></div>
+        <div id="donut-swipe" style="touch-action:pan-y">
         <div class="chart-wrap donut" id="donut-wrap"><canvas id="donutC"></canvas><div class="donut-center"><b id="donut-total">€0</b><span>uscite</span></div></div>
         <div class="leg-list" id="donut-leg"></div>
+        </div>
+        <div class="dn-dots"><i class="on"></i><i></i><i></i></div>
       </div>
       <div class="card">
         <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26A7 7 0 0 1 12 2z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>Consigli</div>
@@ -1300,7 +1313,7 @@ function renderHomeData(mk0){
   document.getElementById('home-list').innerHTML=allTx.length?dayList(allTx):emptyHTML('Nessun movimento in questo periodo','Aggiungi la tua prima spesa o entrata per iniziare a tenere sotto controllo il budget.',{t:'＋ Aggiungi',fn:'openTypeModal()'});
   renderHeroProgress(mk0,saldo,entrate);
   renderHomeBudget(mk0);
-  renderDonut(expFor(mk0));
+  renderDonut(null,mk0);
   renderTips(expFor(mk0),uscite,entrate,saldo);
   renderBackupBanner();
 }
@@ -1324,32 +1337,62 @@ function renderHomeBudget(pkey){
   box.innerHTML=rows.map(r=>{const col=r.pct>100?'var(--danger)':r.pct>=80?'var(--warning)':'var(--in)';return`<div class="budget-item"><div class="budget-header"><span class="bn">${tile(r.c,'tile xs')}${r.c.name}</span><span style="color:${r.pct>100?'var(--out-ink)':'var(--muted)'};font-weight:800">${fmt(r.sp)} / ${fmt(r.b)}</span></div><div class="budget-track"><div class="budget-fill" data-w="${Math.min(100,Math.round(r.pct))}" style="width:0;background:${col}"></div></div></div>`;}).join('');
   requestAnimationFrame(()=>requestAnimationFrame(()=>box.querySelectorAll('.budget-fill').forEach(f=>{f.style.width=f.dataset.w+'%';})));
 }
-let donutSel=-1,donutData=[],donutTot=0;
+let donutSel=-1,donutData=[],donutTot=0,dMode=0,dPk=null,dSub='uscite';
+const DN_T=['Uscite per categoria','Entrate per tipo','Budget rimasto'];
+function donutItems(){
+  const pk=dPk;
+  if(dMode===0)return cats.map(c=>({name:c.name,color:c.color,g:catGlyph(c),val:total(expFor(pk).filter(e=>e.cat===c.name))})).filter(d=>d.val>0).sort((a,b)=>b.val-a.val);
+  if(dMode===1){const inc=incFor(pk);return Object.keys(INC_EMOJI).map(t=>({name:t,color:INC_COL[t]||'#94a3b8',g:incGlyph(t),val:total(inc.filter(i=>i.type===t))})).filter(d=>d.val>0).sort((a,b)=>b.val-a.val);}
+  const ex=expFor(pk);
+  return cats.filter(c=>budgets[c.name]>0).map(c=>{const sp=total(ex.filter(e=>e.cat===c.name));const b=budgets[c.name];return{name:c.name,color:c.color,g:catGlyph(c),val:Math.max(0,b-sp),sp,b,over:sp>b};}).sort((a,b)=>b.val-a.val);
+}
 function donutShow(){
   const b=document.getElementById('donut-total'),s=document.querySelector('.donut-center span'),d=donutData[donutSel];
-  if(d){b.textContent=fmt(d.val);s.textContent=d.c.name+' · '+Math.round(d.val/donutTot*100)+'%';b.style.color=d.c.color;}
-  else{b.textContent=fmt(donutTot);s.textContent='uscite · tocca una categoria';b.style.color='';}
+  const unit=['uscite','entrate','budget rimasto'][dMode];
+  if(d){b.textContent=fmt(d.val);s.textContent=d.name+(donutTot?' · '+Math.round(d.val/donutTot*100)+'%':'');b.style.color=d.color;}
+  else{b.textContent=fmt(donutTot);s.textContent=unit+' · tocca una categoria';b.style.color='';}
   if(donutInst){const ds=donutInst.data.datasets[0];
-    ds.backgroundColor=donutData.map((x,i)=>donutSel<0||i===donutSel?x.c.color:x.c.color+'33');
+    ds.backgroundColor=donutData.map((x,i)=>donutSel<0||i===donutSel?x.color:x.color+'33');
     ds.offset=donutData.map((x,i)=>i===donutSel?10:0);donutInst.update();}
   document.querySelectorAll('#donut-leg .leg-row').forEach((r,i)=>{r.style.opacity=donutSel<0||i===donutSel?1:.4;r.style.background=i===donutSel?'var(--surface2)':'';});
 }
 function donutPick(i){donutSel=(donutSel===i?-1:i);donutShow();}
-function renderDonut(list){
-  const data=cats.map(c=>({c,val:total(list.filter(e=>e.cat===c.name))})).filter(d=>d.val>0).sort((a,b)=>b.val-a.val);
+function donutMode(m,dir){
+  if(m===dMode&&!dir&&dir!==0){}
+  const old=dMode;dMode=Math.max(0,Math.min(2,m));
+  document.querySelectorAll('.dn-tabs button').forEach((x,i)=>x.classList.toggle('on',i===dMode));
+  document.querySelectorAll('.dn-dots i').forEach((x,i)=>x.classList.toggle('on',i===dMode));
+  document.getElementById('donut-title').textContent=DN_T[dMode];
+  renderDonut();
+  const sw=document.getElementById('donut-swipe');sw.classList.remove('sl-l','sl-r');void sw.offsetWidth;
+  if(old!==dMode)sw.classList.add(dMode>old?'sl-l':'sl-r');
+}
+function renderDonut(list,pk){
+  if(pk)dPk=pk;
+  const data=donutItems();
   if(donutInst){donutInst.destroy();donutInst=null;}
   const wrap=document.getElementById('donut-wrap'),leg=document.getElementById('donut-leg');
   const tot=data.reduce((s,d)=>s+d.val,0);
-  if(!data.length){wrap.style.display='none';leg.innerHTML=`<div style="text-align:center;padding:14px 0;color:var(--muted);font-weight:700;font-size:14px">Nessuna uscita in questo periodo</div>`;return;}
+  if(!data.length){wrap.style.display='none';const m=['Nessuna uscita in questo periodo','Nessuna entrata in questo periodo','Nessun budget impostato: aggiungilo da Impostazioni'][dMode];leg.innerHTML=`<div style="text-align:center;padding:14px 0;color:var(--muted);font-weight:700;font-size:14px">${m}</div>`;return;}
   wrap.style.display='block';
   donutData=data;donutTot=tot;donutSel=-1;
   const ctx=document.getElementById('donutC').getContext('2d');
-  donutInst=new Chart(ctx,{type:'doughnut',data:{labels:data.map(d=>d.c.name),datasets:[{data:data.map(d=>d.val),backgroundColor:data.map(d=>d.c.color),borderWidth:3,borderColor:cssv('--surface'),hoverOffset:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},events:['click'],onClick:(e,els)=>{donutPick(els.length?els[0].index:-1);},cutout:'72%'}});
-  let html=data.map((d,i)=>`<div class="leg-row" style="cursor:pointer;border-radius:12px;padding:4px 6px;margin:0 -6px;transition:.15s" onclick="donutPick(${i})">${tile(d.c,'tile xs')}<span class="ln">${d.c.name}</span><span class="lp">${Math.round(d.val/tot*100)}%</span><span class="la">${fmt(d.val)}</span></div>`).join('');
-  leg.innerHTML=html;
+  const chartData=tot>0?data.map(d=>d.val):data.map(()=>1);
+  donutInst=new Chart(ctx,{type:'doughnut',data:{labels:data.map(d=>d.name),datasets:[{data:chartData,backgroundColor:data.map(d=>d.color),borderWidth:3,borderColor:cssv('--surface'),hoverOffset:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},events:['click'],onClick:(e,els)=>{donutPick(els.length?els[0].index:-1);},cutout:'72%'}});
+  leg.innerHTML=data.map((d,i)=>{
+    const right=dMode===2?(d.over?`<span class="la" style="color:var(--out-ink)">sforato ${fmt(d.sp-d.b)}</span>`:`<span class="la">${fmt(d.val)} <small style="color:var(--muted);font-weight:700">/ ${fmt(d.b)}</small></span>`):`<span class="lp">${tot?Math.round(d.val/tot*100):0}%</span><span class="la">${fmt(d.val)}</span>`;
+    return `<div class="leg-row" style="cursor:pointer;border-radius:12px;padding:4px 6px;margin:0 -6px;transition:.15s" onclick="donutPick(${i})"><span class="tile xs" style="background:${d.color}">${d.g}</span><span class="ln">${d.name}</span>${right}</div>`;}).join('');
   animNum(document.getElementById('donut-total'),tot,fmt,700);
-  document.querySelector('.donut-center span').textContent='uscite · tocca una categoria';
+  document.querySelector('.donut-center span').textContent=['uscite','entrate','budget rimasto'][dMode]+' · tocca una categoria';
 }
+(function(){let x0=null,y0=0;
+  function bind(){const el=document.getElementById('donut-swipe');if(!el||el._b)return;el._b=1;
+    el.addEventListener('pointerdown',e=>{x0=e.clientX;y0=e.clientY;});
+    el.addEventListener('pointerup',e=>{if(x0==null)return;const dx=e.clientX-x0,dy=e.clientY-y0;x0=null;
+      if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.5){const n=dMode+(dx<0?1:-1);if(n>=0&&n<=2)donutMode(n);}});
+    el.addEventListener('pointercancel',()=>{x0=null;});}
+  document.addEventListener('DOMContentLoaded',bind);bind();
+})();
 
 function renderTips(list,uscite,entrate,saldo){
   const tips=[];
@@ -1980,7 +2023,7 @@ function liveAccent(c){SCT.setAccent(c);}
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SCT.mode()==='auto'){SCT.apply();goTo(currentSection);}});
 
 // ─── INFO APP ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.2.0';
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.3.0';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);

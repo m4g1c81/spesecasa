@@ -567,6 +567,10 @@ textarea{resize:none;height:76px}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             Importa backup
           </button>
+          <button class="btn-secondary" onclick="copyBackup()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copia dati
+          </button>
           <button class="btn-secondary" onclick="openPaste()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
             Incolla dati
@@ -1916,8 +1920,15 @@ function renderBackupBanner(){
   el.innerHTML=`<div class="bk"><b>💾 Salva un backup dei tuoi dati</b><span>${d===null?'Non hai ancora salvato nessun backup.':'Ultimo backup '+d+' giorni fa.'} Se il telefono o il browser cancellano i dati, non si recuperano.</span><div><button class="ok" onclick="exportBackup()">Salva backup</button><button class="no" onclick="snoozeBackup()">Più tardi</button></div></div>`;
 }
 function snoozeBackup(){try{localStorage.setItem('sc_bk_snooze',String(Date.now()+3*864e5));}catch(e){}renderBackupBanner();}
+function bkData(){return{version:3,exportDate:new Date().toISOString(),expenses,incomes,budgets,cats,settings:{mode:SCT.mode(),accent:SCT.accent(),periodDay}};}
+async function copyBackup(){
+  const txt=JSON.stringify(bkData());
+  try{await navigator.clipboard.writeText(txt);markBackup();toast('📋 Dati copiati negli appunti');return;}catch(e){}
+  const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(ta);ta.focus();ta.select();ta.setSelectionRange(0,txt.length);
+  let ok=false;try{ok=document.execCommand('copy');}catch(e){}ta.remove();if(ok)markBackup();toast(ok?'📋 Dati copiati negli appunti':'❌ Copia non riuscita');
+}
 async function exportBackup(){
-  const data={version:2,exportDate:new Date().toISOString(),expenses,incomes,budgets,cats};
+  const data=bkData();
   const name=`SpeseCasa_backup_${today()}.json`;
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   try{
@@ -1971,6 +1982,13 @@ function applyBackup(data){
   if(data.budgets)budgets=data.budgets;
   if(data.cats)cats=data.cats;
   saveExp();saveInc();saveBud();saveCats();
+  const st=data.settings;
+  if(st){
+    if(st.mode==='light'||st.mode==='dark')SCT.setMode(st.mode);
+    if(/^#[0-9a-fA-F]{6}$/.test(st.accent||''))SCT.setAccent(st.accent);
+    if(st.periodDay>=1&&st.periodDay<=28){periodDay=st.periodDay;localStorage.setItem('sc_period_day',periodDay);}
+    try{renderThemes();}catch(e){}
+  }
   renderSettings();renderHome();
   toast('✅ Backup ripristinato!');
   return true;
@@ -2029,7 +2047,7 @@ function liveAccent(c){SCT.setAccent(c);}
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SCT.mode()==='auto'){SCT.apply();goTo(currentSection);}});
 
 // ─── INFO APP ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.3.1';
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.4.0';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);

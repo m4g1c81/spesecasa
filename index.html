@@ -410,7 +410,7 @@ textarea{resize:none;height:76px}
       </div>
       <div class="card">
         <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg><span id="donut-title">Uscite per categoria</span></div>
-        <div class="dn-tabs"><button class="on" onclick="donutMode(0)">Uscite</button><button onclick="donutMode(1)">Entrate</button><button onclick="donutMode(2)">Budget</button></div>
+        <div class="dn-tabs"><button class="on" onclick="donutMode(0)">Uscite</button><button onclick="donutMode(1)">Entrate</button><button onclick="donutMode(2)">Saldo</button></div>
         <div id="donut-swipe" style="touch-action:pan-y">
         <div class="chart-wrap donut" id="donut-wrap"><canvas id="donutC"></canvas><div class="donut-center"><b id="donut-total">€0</b><span>uscite</span></div></div>
         <div class="leg-list" id="donut-leg"></div>
@@ -1338,18 +1338,22 @@ function renderHomeBudget(pkey){
   requestAnimationFrame(()=>requestAnimationFrame(()=>box.querySelectorAll('.budget-fill').forEach(f=>{f.style.width=f.dataset.w+'%';})));
 }
 let donutSel=-1,donutData=[],donutTot=0,dMode=0,dPk=null,dSub='uscite';
-const DN_T=['Uscite per categoria','Entrate per tipo','Budget rimasto'];
+const DN_T=['Uscite per categoria','Entrate per tipo','Saldo del periodo'];
 function donutItems(){
   const pk=dPk;
   if(dMode===0)return cats.map(c=>({name:c.name,color:c.color,g:catGlyph(c),val:total(expFor(pk).filter(e=>e.cat===c.name))})).filter(d=>d.val>0).sort((a,b)=>b.val-a.val);
   if(dMode===1){const inc=incFor(pk);return Object.keys(INC_EMOJI).map(t=>({name:t,color:INC_COL[t]||'#94a3b8',g:incGlyph(t),val:total(inc.filter(i=>i.type===t))})).filter(d=>d.val>0).sort((a,b)=>b.val-a.val);}
-  const ex=expFor(pk);
-  return cats.filter(c=>budgets[c.name]>0).map(c=>{const sp=total(ex.filter(e=>e.cat===c.name));const b=budgets[c.name];return{name:c.name,color:c.color,g:catGlyph(c),val:Math.max(0,b-sp),sp,b,over:sp>b};}).sort((a,b)=>b.val-a.val);
+  const ex=expFor(pk),ent=total(incFor(pk));
+  const r=cats.map(c=>({name:c.name,color:c.color,g:catGlyph(c),val:total(ex.filter(e=>e.cat===c.name))})).filter(d=>d.val>0).sort((a,b)=>b.val-a.val);
+  const us=r.reduce((s,d)=>s+d.val,0),sal=ent-us;
+  if(sal>0)r.push({name:'Saldo rimasto',color:'#12B886',g:svgIcon('dots'),val:sal,saldo:true});
+  r.saldoVal=sal;return r;
 }
 function donutShow(){
   const b=document.getElementById('donut-total'),s=document.querySelector('.donut-center span'),d=donutData[donutSel];
-  const unit=['uscite','entrate','budget rimasto'][dMode];
+  const unit=['uscite','entrate','saldo'][dMode];
   if(d){b.textContent=fmt(d.val);s.textContent=d.name+(donutTot?' · '+Math.round(d.val/donutTot*100)+'%':'');b.style.color=d.color;}
+  else if(dMode===2){b.textContent=fmt(donutData.saldoVal);s.textContent='saldo · tocca una categoria';b.style.color=donutData.saldoVal<0?'var(--danger)':'';}
   else{b.textContent=fmt(donutTot);s.textContent=unit+' · tocca una categoria';b.style.color='';}
   if(donutInst){const ds=donutInst.data.datasets[0];
     ds.backgroundColor=donutData.map((x,i)=>donutSel<0||i===donutSel?x.color:x.color+'33');
@@ -1373,17 +1377,19 @@ function renderDonut(list,pk){
   if(donutInst){donutInst.destroy();donutInst=null;}
   const wrap=document.getElementById('donut-wrap'),leg=document.getElementById('donut-leg');
   const tot=data.reduce((s,d)=>s+d.val,0);
-  if(!data.length){wrap.style.display='none';const m=['Nessuna uscita in questo periodo','Nessuna entrata in questo periodo','Nessun budget impostato: aggiungilo da Impostazioni'][dMode];leg.innerHTML=`<div style="text-align:center;padding:14px 0;color:var(--muted);font-weight:700;font-size:14px">${m}</div>`;return;}
+  if(!data.length){wrap.style.display='none';const m=['Nessuna uscita in questo periodo','Nessuna entrata in questo periodo','Nessun movimento in questo periodo'][dMode];leg.innerHTML=`<div style="text-align:center;padding:14px 0;color:var(--muted);font-weight:700;font-size:14px">${m}</div>`;return;}
   wrap.style.display='block';
   donutData=data;donutTot=tot;donutSel=-1;
   const ctx=document.getElementById('donutC').getContext('2d');
   const chartData=tot>0?data.map(d=>d.val):data.map(()=>1);
   donutInst=new Chart(ctx,{type:'doughnut',data:{labels:data.map(d=>d.name),datasets:[{data:chartData,backgroundColor:data.map(d=>d.color),borderWidth:3,borderColor:cssv('--surface'),hoverOffset:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},events:['click'],onClick:(e,els)=>{donutPick(els.length?els[0].index:-1);},cutout:'72%'}});
   leg.innerHTML=data.map((d,i)=>{
-    const right=dMode===2?(d.over?`<span class="la" style="color:var(--out-ink)">sforato ${fmt(d.sp-d.b)}</span>`:`<span class="la">${fmt(d.val)} <small style="color:var(--muted);font-weight:700">/ ${fmt(d.b)}</small></span>`):`<span class="lp">${tot?Math.round(d.val/tot*100):0}%</span><span class="la">${fmt(d.val)}</span>`;
+    const right=`<span class="lp">${tot?Math.round(d.val/tot*100):0}%</span><span class="la">${fmt(d.val)}</span>`;
     return `<div class="leg-row" style="cursor:pointer;border-radius:12px;padding:4px 6px;margin:0 -6px;transition:.15s" onclick="donutPick(${i})"><span class="tile xs" style="background:${d.color}">${d.g}</span><span class="ln">${d.name}</span>${right}</div>`;}).join('');
-  animNum(document.getElementById('donut-total'),tot,fmt,700);
-  document.querySelector('.donut-center span').textContent=['uscite','entrate','budget rimasto'][dMode]+' · tocca una categoria';
+  data.saldoVal=data.saldoVal;
+  animNum(document.getElementById('donut-total'),dMode===2?data.saldoVal:tot,fmt,700);
+  document.getElementById('donut-total').style.color=dMode===2&&data.saldoVal<0?'var(--danger)':'';
+  document.querySelector('.donut-center span').textContent=['uscite','entrate','saldo'][dMode]+' · tocca una categoria';
 }
 (function(){let x0=null,y0=0;
   function bind(){const el=document.getElementById('donut-swipe');if(!el||el._b)return;el._b=1;
@@ -2023,7 +2029,7 @@ function liveAccent(c){SCT.setAccent(c);}
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SCT.mode()==='auto'){SCT.apply();goTo(currentSection);}});
 
 // ─── INFO APP ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.3.0';
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.3.1';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);

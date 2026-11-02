@@ -297,9 +297,6 @@ textarea{resize:none;height:76px}
 .hint{font-size:12px;color:var(--muted);margin:-4px 0 12px;font-weight:700}
 .search{margin-bottom:12px}
 .search-sum{font-size:12px;color:var(--muted);font-weight:700;margin:-4px 0 12px}
-.undo-bar{position:fixed;left:50%;bottom:calc(var(--nav-h) + 18px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(220%);background:var(--text);color:var(--bg);border-radius:30px;padding:9px 9px 9px 20px;display:flex;align-items:center;gap:14px;z-index:1000;font-weight:800;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.3);transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:94vw}
-.undo-bar.show{transform:translateX(-50%) translateY(0)}
-.undo-bar button{background:var(--accent);color:#fff;border:none;border-radius:24px;padding:9px 16px;font-weight:800;font-size:14px;cursor:pointer}
 .cmp-sugg{display:flex;gap:8px;overflow-x:auto;margin-top:14px;scrollbar-width:none}
 .cmp-sugg::-webkit-scrollbar{display:none}
 .cmp-sugg:empty{display:none}
@@ -633,7 +630,6 @@ textarea{resize:none;height:76px}
 </div>
 
 <div class="toast" id="toast"></div>
-<div class="undo-bar" id="undo-bar"><span id="undo-msg"></span><button onclick="doUndo()">Annulla</button></div>
 
 <div id="ios-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:var(--surface);box-shadow:0 -8px 30px var(--shadow-c);border-radius:24px 24px 0 0">
   <div style="display:flex;align-items:flex-start;gap:12px">
@@ -1048,28 +1044,22 @@ function processRecurring(silent){
   return added;
 }
 
-// ─── ELIMINA CON ANNULLA ───
-let _undo=null,_undoT=null;
-function showUndo(msg,fn){_undo=fn;document.getElementById('undo-msg').textContent=msg;document.getElementById('undo-bar').classList.add('show');clearTimeout(_undoT);_undoT=setTimeout(hideUndo,6000);}
-function hideUndo(){document.getElementById('undo-bar').classList.remove('show');_undo=null;}
-function doUndo(){const f=_undo;hideUndo();if(f)f();}
+// ─── ELIMINA ───
 function refreshKeepScroll(){const sc=document.getElementById('main-scroll');const st=sc.scrollTop;goTo(currentSection);sc.scrollTop=st;}
 function markSkip(list,it){if(!it.from)return;const o=list.find(x=>x.id===it.from);if(o){o.skip=(o.skip||[]).concat(it.due);}}
 function delExpense(id){
   const it=expenses.find(e=>e.id===id);if(!it)return;
-  const snap=JSON.stringify(expenses);
+  if(!confirm('Eliminare questa uscita?'))return;
   markSkip(expenses,it);
   expenses=expenses.filter(e=>e.id!==id);saveExp();
-  refreshKeepScroll();
-  showUndo('Uscita eliminata',()=>{expenses=JSON.parse(snap);saveExp();refreshKeepScroll();});
+  refreshKeepScroll();toast('🗑️ Uscita eliminata');
 }
 function delIncome(id){
   const it=incomes.find(i=>i.id===id);if(!it)return;
-  const snap=JSON.stringify(incomes);
+  if(!confirm('Eliminare questa entrata?'))return;
   markSkip(incomes,it);
   incomes=incomes.filter(i=>i.id!==id);saveInc();
-  refreshKeepScroll();
-  showUndo('Entrata eliminata',()=>{incomes=JSON.parse(snap);saveInc();refreshKeepScroll();});
+  refreshKeepScroll();toast('🗑️ Entrata eliminata');
 }
 
 // ─── RIGHE (con scorrimento laterale) ───
@@ -1777,7 +1767,7 @@ function liveAccent(c){SCT.setAccent(c);}
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SCT.mode()==='auto'){SCT.apply();goTo(currentSection);}});
 
 // ─── INFO APP ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='2.7.0';
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='2.7.1';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);

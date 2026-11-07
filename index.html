@@ -235,6 +235,14 @@ textarea{resize:none;height:76px}
 .cmp-x{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.25);border:none;color:#fff;font-size:20px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .cmp-kind{font-family:'Fredoka',ui-rounded,sans-serif;font-size:20px;font-weight:600}
 .cmp-bar-gap{width:42px}
+.smart-row{display:flex;gap:8px;margin:2px 0 4px}
+.smart-row input{flex:1;min-width:0;background:rgba(255,255,255,.22);border:none;border-radius:14px;color:#fff;font-family:inherit;font-size:15px;font-weight:700;padding:11px 14px}
+.smart-row input::placeholder{color:rgba(255,255,255,.78)}
+.smart-btn{flex:none;width:44px;border:none;border-radius:14px;background:rgba(255,255,255,.22);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.smart-btn.go{background:#fff;color:#000}.smart-btn.rec{background:#ff3b5c;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.55}}
+.smart-res{font-size:12.5px;font-weight:800;color:rgba(255,255,255,.92);min-height:0;margin-bottom:6px;line-height:1.35}
+.smart-res:empty{display:none}
 .composer input.cmp-name{width:100%;background:transparent;border:none;border-bottom:3px solid rgba(255,255,255,.5);border-radius:0;color:#fff;font-family:'Fredoka',ui-rounded,sans-serif;font-size:26px;font-weight:500;padding:8px 0}
 .composer input.cmp-name:focus{border-bottom-color:#fff}
 .composer input.cmp-name::placeholder,.composer input.cmp-amount::placeholder{color:rgba(255,255,255,.6)}
@@ -657,6 +665,12 @@ textarea{resize:none;height:76px}
       <div class="cmp-kind" id="c-kind">Nuova uscita</div>
       <div class="cmp-bar-gap"></div>
     </div>
+    <div class="smart-row" id="c-smart-row">
+      <input type="text" id="c-smart" placeholder="✨ Scrivi o detta: pizza 25 € ieri" autocomplete="off" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();smartFill();}">
+      <button type="button" class="smart-btn" id="c-mic" onclick="smartMic()" aria-label="Detta"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
+      <button type="button" class="smart-btn go" onclick="smartFill()" aria-label="Compila">✨</button>
+    </div>
+    <div class="smart-res" id="c-smart-res"></div>
     <input type="text" class="cmp-name" id="c-desc" placeholder="Come la chiami?" autocomplete="off" enterkeyhint="next" oninput="renderSuggest()">
     <div class="cmp-sugg" id="c-sugg"></div>
     <div class="cmp-amount-row">
@@ -1066,6 +1080,7 @@ function openComposer(mode,editId){
   el.classList.toggle('inc',isInc);
   buildCatGrid(item?(isInc?item.type:item.cat):null);
   $('c-kind').textContent=(editId?'Modifica ':'Nuova ')+(isInc?'entrata':'uscita');
+  $('c-smart').value='';$('c-smart-res').textContent='';$('c-smart-row').style.display=editId?'none':'';
   $('c-desc').placeholder=isInc?'Es. Stipendio di novembre':'Es. Spesa al supermercato';
   $('c-desc').value=item?item.desc:'';
   $('c-amount').value=item?String(item.amount).replace('.',','):'';
@@ -1151,7 +1166,7 @@ function composerSave(finish){
     const merged={...list[idx],...base};
     if(!gen&&rec==='no'){delete merged.auto;}
     list[idx]=merged;_lastAdded=cmpEditId;setTimeout(()=>{_lastAdded=null;},1500);
-  } else {const nid=newId();list.unshift({id:nid,...base});_lastAdded=nid;setTimeout(()=>{_lastAdded=null;},1500);}
+  } else {if(!isInc)learnCat(desc,cat);const nid=newId();list.unshift({id:nid,...base});_lastAdded=nid;setTimeout(()=>{_lastAdded=null;},1500);}
   if(isInc)saveInc();else saveExp();
   let msg=cmpEditId?'✏️ Modifica salvata!':(isInc?'✅ Entrata aggiunta!':'✅ Uscita aggiunta!');
   const n=processRecurring(true);
@@ -1163,6 +1178,115 @@ function composerSave(finish){
   $('c-desc').value='';$('c-amount').value='';$('c-note').value='';$('c-tag').value='';$('c-rec').value='no';updateRecNote();
   renderSuggest();
   $('cmp-sheet').scrollTop=0;$('c-desc').focus();
+}
+
+
+// ─── INSERIMENTO INTELLIGENTE (testo / voce) ───
+const SM_EXP={
+Alimentari:'spesa supermercato esselunga coop conad lidl eurospin carrefour penny iper frutta verdura pane panetteria latte macelleria pesce alimentari salumi formaggio uova pasta pescheria fruttivendolo mercato',
+Ristoranti:'pizza pizzeria ristorante trattoria sushi kebab bar caffe cappuccino colazione aperitivo pranzo cena gelato gelateria mcdonald burger birra panino brioche pub osteria deliveroo glovo takeaway cornetto spritz',
+Trasporti:'benzina carburante diesel gasolio pedaggio autostrada parcheggio taxi uber treno bus autobus metro tram bollo meccanico gommista tagliando revisione lavaggio italo trenitalia volo ryanair monopattino',
+Salute:'farmacia medico dentista visita ticket medicina oculista occhiali analisi fisioterapia psicologo ospedale dottore cerotti',
+Intrattenimento:'cinema netflix spotify disney prime teatro concerto videogioco playstation steam discoteca museo mostra dazn sky giochi biglietti',
+Bollette:'bolletta bollette luce gas enel eni hera internet fibra telefono cellulare ricarica tim vodafone wind iliad fastweb tari rifiuti canone',
+Casa:'affitto mutuo condominio mobili ikea detersivo ferramenta idraulico elettricista leroy lavatrice arredamento pulizie giardino riparazione bricolage lampadina',
+Abbigliamento:'vestiti vestito scarpe maglia pantaloni giacca zara abbigliamento jeans cappotto borsa camicia intimo calzini saldi',
+Sport:'palestra piscina calcio tennis padel yoga decathlon bici corsa',
+Istruzione:'libri libro scuola universita corso tasse cancelleria quaderni retta mensa lezione zaino',
+Animali:'cane gatto veterinario crocchette lettiera toelettatura animali'};
+const SM_INC={
+Stipendio:'stipendio paga salario',Freelance:'freelance consulenza fattura compenso lavoretto',
+Affitto:'inquilino affitto',Rimborso:'rimborso restituito cashback',Regalo:'regalato regalo mancia'};
+const SM_INC_TRIG=/stipendio|busta paga|incassat|ricevut|accredit|guadagnat|\bentrata\b|rimborso|mi hanno (dato|pagato|regalato)|inquilin|freelance|consulenza|fattura/;
+const SM_STOP=new Set('ho speso spesi pagato pagata pagati pagate comprato comprata comprati un una uno il lo la le i gli di del della dei delle da al alla allo ai per con in a e euro eur oggi ieri stamattina stasera oggi ricevuto ricevuta incassato incassata preso presa mi hanno dato'.split(' '));
+function smNorm(s){return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function smMatch(tokens,dict){
+  for(const [name,kw] of Object.entries(dict)){
+    const ks=kw.split(' ');
+    for(const t of tokens)for(const k of ks){if(t===k||(k.length>=5&&t.startsWith(k)&&t.length<=k.length+3))return name;}
+  }return null;
+}
+function learnCat(desc,cat){
+  try{const L=JSON.parse(localStorage.getItem('sc_learn')||'{}');const n=smNorm(desc).trim();if(!n)return;
+    L[n]=cat;n.split(/[^a-z0-9]+/).filter(t=>t.length>=4&&!SM_STOP.has(t)).forEach(t=>{L[t]=cat;});
+    const ks=Object.keys(L);if(ks.length>400)ks.slice(0,ks.length-400).forEach(k=>delete L[k]);
+    localStorage.setItem('sc_learn',JSON.stringify(L));}catch(e){}
+}
+function parseSmart(text){
+  let s=' '+smNorm(text).replace(/[,;]+(?!\d)/g,' ').replace(/\s+/g,' ')+' ';
+  const now=new Date();let date=new Date(now.getFullYear(),now.getMonth(),now.getDate()),dl='oggi',m;
+  const dm=(n)=>{const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-n);return d;};
+  if(m=s.match(/\b(l altro ieri|laltro ieri|altro ieri|avantieri)\b/)){date=dm(2);dl='l\'altro ieri';s=s.replace(m[0],' ');}
+  else if(m=s.match(/\bieri\b/)){date=dm(1);dl='ieri';s=s.replace(m[0],' ');}
+  else if(m=s.match(/\b(oggi|stamattina|stasera|stanotte)\b/)){s=s.replace(m[0],' ');}
+  else if(m=s.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/)){let y=m[3]?+m[3]:now.getFullYear();if(y<100)y+=2000;const d=new Date(y,+m[2]-1,+m[1]);if(!isNaN(d)&&+m[2]<=12){date=d;dl=m[1]+'/'+m[2];s=s.replace(m[0],' ');}}
+  else if(m=s.match(/\b(lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)(?: scors[oa])?\b/)){const idx=['domenica','lunedi','martedi','mercoledi','giovedi','venerdi','sabato'].indexOf(m[1]);let diff=(now.getDay()-idx+7)%7;if(diff===0)diff=7;date=dm(diff);dl=m[1];s=s.replace(m[0],' ');}
+  else if(m=s.match(/\bil (\d{1,2})\b(?!\s*(?:euro|eur|€|[.,]\d))/)){let d=new Date(now.getFullYear(),now.getMonth(),+m[1]);if(+m[1]>=1&&+m[1]<=31){if(d>now)d=new Date(now.getFullYear(),now.getMonth()-1,+m[1]);date=d;dl='il '+m[1];s=s.replace(m[0],' ');}}
+  let pay='Carta',pm;
+  const payMap=[['Contanti',/\b(contanti|cash|in contanti)\b/],['Bonifico',/\bbonifico\b/],['PayPal',/\bpaypal\b/],['App',/\b(satispay|apple pay|google pay|applepay|gpay)\b/],['Carta',/\b(carta|bancomat|pos|visa|mastercard|revolut)\b/]];
+  let hasPay=false;
+  for(const [p,re] of payMap){if(pm=s.match(re)){pay=p;hasPay=true;s=s.replace(new RegExp('\\b(?:con|in|tramite|via)?\\s*'+pm[0]),' ');break;}}
+  // importo
+  let amount=0,rawAmt='';
+  const rx=/(\d+(?:[.,]\d{1,2})?)\s*(€|euro|eur)?(?:\s*e\s*(\d{1,2})\b)?/g;let best=null,mm;
+  while((mm=rx.exec(s))){const hasCur=!!mm[2];if(!best||(hasCur&&!best.cur)||(hasCur===best.cur&&false))best={m:mm,cur:hasCur};if(hasCur)break;}
+  if(!best){const mc=s.match(/€\s*(\d+(?:[.,]\d{1,2})?)/);if(mc){best={m:mc,cur:true,pre:true};}}
+  if(best){const mm2=best.m;rawAmt=mm2[1];
+    if(best.pre){amount=parseFloat(mm2[1].replace(',','.'));}
+    else{amount=parseFloat(mm2[1].replace(/\.(?=\d{3}\b)/,'').replace(',','.'));if(mm2[3]&&mm2[2]&&!/[.,]/.test(mm2[1]))amount+=parseInt(mm2[3])/100;}
+    s=s.replace(mm2[0],' ');}
+  s=s.replace(/€/g,' ');
+  const tokens=s.split(/[^a-z0-9&]+/).filter(Boolean);
+  const isInc=SM_INC_TRIG.test(smNorm(text))&&!(/\bspeso\b|\bpagato\b|\bcomprato\b/.test(smNorm(text)));
+  let cat=null,L={};try{L=JSON.parse(localStorage.getItem('sc_learn')||'{}');}catch(e){}
+  const full=tokens.filter(t=>!SM_STOP.has(t)).join(' ');
+  if(isInc){cat=smMatch(tokens,SM_INC)||'Altro';}
+  else{
+    cat=(L[full]&&cats.some(c=>c.name===L[full]))?L[full]:null;
+    if(!cat){const d=smMatch(tokens,SM_EXP);if(d&&cats.some(c=>c.name===d))cat=d;}
+    if(!cat){for(const t of tokens){if(L[t]&&cats.some(c=>c.name===L[t])){cat=L[t];break;}}}
+    if(!cat)cat=cats.some(c=>c.name==='Altro')?'Altro':cats[0].name;
+  }
+  // descrizione: dal testo originale tolgo importo/data/pagamento usando i token rimasti
+  let dt=text.replace(/\s+/g,' ').trim();
+  if(rawAmt)dt=dt.replace(new RegExp('€?\\s*(?<![\\d.,])'+rawAmt.replace(/[.]/g,'\\.')+'(?![\\d])\\s*(?:€|euro\\b|eur\\b)?(?:\\s*e\\s*\\d{1,2}\\b)?','i'),' ');
+  dt=dt.replace(/\b(l'altro ieri|laltro ieri|altro ieri|avantieri|ieri|oggi|stamattina|stasera|stanotte)\b/gi,' ').replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/,' ').replace(/\bil \d{1,2}\b/i,' ').replace(/\b(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)( scors[oa])?(?!\w)/i,' ');
+  if(hasPay)dt=dt.replace(/\b(?:con|in|tramite|via)?\s*(carta|bancomat|pos|visa|mastercard|revolut|contanti|cash|bonifico|paypal|satispay|apple pay|google pay)\b/i,' ');
+  let dw=dt.split(/\s+/).filter(Boolean);
+  const stopNorm=x=>SM_STOP.has(smNorm(x).replace(/'/g,''));
+  while(dw.length&&stopNorm(dw[0].replace(/^.*'/,'')))dw.shift();
+  while(dw.length&&stopNorm(dw[dw.length-1]))dw.pop();
+  let desc=dw.join(' ').replace(/^(l'|un'|dell'|all')/i,'').trim();
+  if(!desc)desc=cat;desc=desc.charAt(0).toUpperCase()+desc.slice(1);
+  return{type:isInc?'inc':'exp',amount,date:ymd(date),dl,pay,hasPay,cat,desc};
+}
+function smartFill(){
+  const t=$('c-smart').value.trim();if(!t)return;
+  const res=$('c-smart-res');
+  const r=parseSmart(t);
+  if(!r.amount){res.textContent='⚠️ Non trovo l\'importo. Prova così: "pizza 25 € ieri"';return;}
+  if(r.type!==cmpMode){openComposer(r.type);$('c-smart').value=t;}
+  $('c-desc').value=r.desc;
+  $('c-amount').value=String(r.amount).replace('.',',');
+  $('c-date').value=r.date;
+  document.querySelectorAll('#cat-grid .cat-option').forEach(el=>el.classList.toggle('selected',el.dataset.cat===r.cat));
+  if(r.type==='exp')document.querySelectorAll('.pay-option').forEach(x=>x.classList.toggle('selected',x.dataset.pay===r.pay));
+  renderSuggest();
+  res.textContent=`✓ ${r.type==='inc'?'Entrata':'Uscita'} · ${r.cat} · ${fmt(r.amount)} · ${r.dl}${r.type==='exp'?' · '+r.pay:''} — controlla e premi Fine`;
+  if(navigator.vibrate)try{navigator.vibrate(15);}catch(e){}
+}
+let _rec=null;
+function smartMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const hint=()=>{$('c-smart-res').textContent='🎤 Qui il microfono non è disponibile: tocca il campo e usa il microfono della tastiera.';};
+  if(!SR){hint();return;}
+  if(_rec){try{_rec.stop();}catch(e){}return;}
+  const r=new SR();_rec=r;r.lang='it-IT';r.interimResults=true;r.maxAlternatives=1;
+  const btn=$('c-mic');btn.classList.add('rec');let fin='';
+  r.onresult=e=>{let tx='';for(let i=0;i<e.results.length;i++){tx+=e.results[i][0].transcript;}fin=tx;$('c-smart').value=tx;};
+  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture')hint();};
+  r.onend=()=>{btn.classList.remove('rec');_rec=null;if(fin.trim())smartFill();};
+  try{r.start();}catch(e){_rec=null;btn.classList.remove('rec');hint();}
 }
 
 // ─── RICORRENZE AUTOMATICHE ───
@@ -1920,7 +2044,7 @@ function renderBackupBanner(){
   el.innerHTML=`<div class="bk"><b>💾 Salva un backup dei tuoi dati</b><span>${d===null?'Non hai ancora salvato nessun backup.':'Ultimo backup '+d+' giorni fa.'} Se il telefono o il browser cancellano i dati, non si recuperano.</span><div><button class="ok" onclick="exportBackup()">Salva backup</button><button class="no" onclick="snoozeBackup()">Più tardi</button></div></div>`;
 }
 function snoozeBackup(){try{localStorage.setItem('sc_bk_snooze',String(Date.now()+3*864e5));}catch(e){}renderBackupBanner();}
-function bkData(){return{version:3,exportDate:new Date().toISOString(),expenses,incomes,budgets,cats,settings:{mode:SCT.mode(),accent:SCT.accent(),periodDay}};}
+function bkData(){return{version:3,exportDate:new Date().toISOString(),expenses,incomes,budgets,cats,learn:JSON.parse(localStorage.getItem('sc_learn')||'{}'),settings:{mode:SCT.mode(),accent:SCT.accent(),periodDay}};}
 async function copyBackup(){
   const txt=JSON.stringify(bkData());
   try{await navigator.clipboard.writeText(txt);markBackup();toast('📋 Dati copiati negli appunti');return;}catch(e){}
@@ -1982,6 +2106,7 @@ function applyBackup(data){
   if(data.budgets)budgets=data.budgets;
   if(data.cats)cats=data.cats;
   saveExp();saveInc();saveBud();saveCats();
+  if(data.learn&&typeof data.learn==='object')localStorage.setItem('sc_learn',JSON.stringify(data.learn));
   const st=data.settings;
   if(st){
     if(st.mode==='light'||st.mode==='dark')SCT.setMode(st.mode);
@@ -2047,7 +2172,7 @@ function liveAccent(c){SCT.setAccent(c);}
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SCT.mode()==='auto'){SCT.apply();goTo(currentSection);}});
 
 // ─── INFO APP ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.4.0';
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.5.0';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);

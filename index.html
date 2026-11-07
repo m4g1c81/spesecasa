@@ -666,7 +666,7 @@ textarea{resize:none;height:76px}
       <div class="cmp-bar-gap"></div>
     </div>
     <div class="smart-row" id="c-smart-row">
-      <input type="text" id="c-smart" placeholder="✨ Scrivi o detta: pizza 25 € ieri" autocomplete="off" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();smartFill();}">
+      <input type="text" id="c-smart" oninput="_smartDone=false" placeholder="✨ Scrivi o detta: pizza 25 € ieri" autocomplete="off" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();smartFill();}">
       <button type="button" class="smart-btn" id="c-mic" onclick="smartMic()" aria-label="Detta"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
       <button type="button" class="smart-btn go" onclick="smartFill()" aria-label="Compila">✨</button>
     </div>
@@ -1080,7 +1080,7 @@ function openComposer(mode,editId){
   el.classList.toggle('inc',isInc);
   buildCatGrid(item?(isInc?item.type:item.cat):null);
   $('c-kind').textContent=(editId?'Modifica ':'Nuova ')+(isInc?'entrata':'uscita');
-  $('c-smart').value='';$('c-smart-res').textContent='';$('c-smart-row').style.display=editId?'none':'';
+  $('c-smart').value='';$('c-smart-res').textContent='';_smartDone=false;$('c-smart-row').style.display=editId?'none':'';
   $('c-desc').placeholder=isInc?'Es. Stipendio di novembre':'Es. Spesa al supermercato';
   $('c-desc').value=item?item.desc:'';
   $('c-amount').value=item?String(item.amount).replace('.',','):'';
@@ -1143,7 +1143,10 @@ function pickSuggest(i){
   $('c-amount').focus();
 }
 
+let _smartDone=false;
 function composerSave(finish){
+  const sm=$('c-smart').value.trim();
+  if(sm&&!_smartDone&&!cmpEditId){smartFill();if(!_smartDone)return;}
   const isInc=cmpMode==='inc';
   const desc=$('c-desc').value.trim();
   const amount=parseFloat($('c-amount').value.replace(',','.'));
@@ -1176,6 +1179,7 @@ function composerSave(finish){
   if(finish||cmpEditId){closeComposer();return;}
   // "Aggiungi": svuota e continua con un altro inserimento
   $('c-desc').value='';$('c-amount').value='';$('c-note').value='';$('c-tag').value='';$('c-rec').value='no';updateRecNote();
+  $('c-smart').value='';$('c-smart-res').textContent='';_smartDone=false;
   renderSuggest();
   $('cmp-sheet').scrollTop=0;$('c-desc').focus();
 }
@@ -1266,6 +1270,7 @@ function smartFill(){
   const r=parseSmart(t);
   if(!r.amount){res.textContent='⚠️ Non trovo l\'importo. Prova così: "pizza 25 € ieri"';return;}
   if(r.type!==cmpMode){openComposer(r.type);$('c-smart').value=t;}
+  _smartDone=true;
   $('c-desc').value=r.desc;
   $('c-amount').value=String(r.amount).replace('.',',');
   $('c-date').value=r.date;
@@ -2172,7 +2177,7 @@ function liveAccent(c){SCT.setAccent(c);}
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SCT.mode()==='auto'){SCT.apply();goTo(currentSection);}});
 
 // ─── INFO APP ───
-const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.5.0';
+const APP_OWNER='Marco', APP_YEAR='2026', APP_VERSION='3.5.1';
 (function(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('app-ver','v'+APP_VERSION);set('app-year',APP_YEAR);set('app-owner',APP_OWNER);
